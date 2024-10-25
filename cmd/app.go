@@ -44,16 +44,14 @@ var rootCmd = &cobra.Command{
 		fx.New(
 			logger.WithLoggerFactory(log.GetLevel()),
 			logger.WithFxLogger,
-			internal.Modules,
+			internal.WithBusinessLogic(),
 		).Run()
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().String("ts-auth-key", "", "auth key for tailscale")
-	viper.BindPFlag("ts-auth-key", rootCmd.PersistentFlags().Lookup("ts-auth-key"))
-	rootCmd.PersistentFlags().String("ts-name", "owntracks", "tailscale name")
-	viper.BindPFlag("ts-name", rootCmd.PersistentFlags().Lookup("ts-name"))
+	rootCmd.PersistentFlags().String("addr", ":8080", "address")
+	viper.BindPFlag("addr", rootCmd.PersistentFlags().Lookup("addr"))
 
 	rootCmd.PersistentFlags().String("db-host", "localhost", "hostname of db")
 	viper.BindPFlag("db-host", rootCmd.PersistentFlags().Lookup("db-host"))

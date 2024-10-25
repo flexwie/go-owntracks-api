@@ -1,19 +1,26 @@
 package internal
 
 import (
+	"net/http"
+
+	fhttp "github.com/flexwie/go-common/http"
 	"github.com/flexwie/owntracks-api/internal/controller"
 	"github.com/flexwie/owntracks-api/internal/db"
 	"github.com/jmoiron/sqlx"
+	"github.com/spf13/viper"
 	"go.uber.org/fx"
-	"tailscale.com/tsnet"
 
 	_ "github.com/lib/pq"
 )
 
-var Modules = fx.Options(
-	WithTsHttp,
-	controller.Modules,
-	db.WithDb,
-	fx.Invoke(func(*tsnet.Server) {}),
-	fx.Invoke(func(*sqlx.DB) {}),
-)
+func WithBusinessLogic() fx.Option {
+	addr := viper.GetString("addr")
+
+	return fx.Options(
+		fhttp.WithHttpFactory(addr),
+		controller.Modules,
+		db.WithDb,
+		fx.Invoke(func(*http.Server) {}),
+		fx.Invoke(func(*sqlx.DB) {}),
+	)
+}

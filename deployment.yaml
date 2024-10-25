@@ -11,6 +11,7 @@ spec:
       labels:
         app: owntracks
     spec:
+      serviceAccountName: "tailscale-owntracks"
       imagePullSecrets:
         - name: regcred
       containers:
@@ -18,8 +19,6 @@ spec:
           image: ko://main.go
           args:
             [
-              "--ts-auth-key",
-              "$(TS_AUTH_KEY)",
               "--db-host",
               "$(DB_HOST)",
               "--db-user",
@@ -59,6 +58,43 @@ spec:
                 secretKeyRef:
                   name: owntracks-app
                   key: dbname
+        - name: ts-sidecar
+          resources:
+            limits: {}
+          imagePullPolicy: Always
+          image: "ghcr.io/tailscale/tailscale:latest"
+          volumeMounts:
+            - mountPath: /etc/tsconfig
+              name: ts-config
+          env:
+            # Store the state in a k8s secret
+            - name: TS_KUBE_SECRET
+              value: "ts-owntracks-state"
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_DEBUG_FIREWALL_MODE
+              value: auto
+            - name: TS_HOSTNAME
+              value: owntracks
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: ts-auth-key
+                  key: key
+                  optional: true
+            - name: TS_SERVE_CONFIG
+              value: /etc/tsconfig/serve.json
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+      volumes:
+        - name: ts-config
+          configMap:
+            name: ts-owntracks-serve
+            items:
+              - key: serve.json
+                path: serve.json
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -75,11 +111,65 @@ spec:
   storage:
     size: 1Gi
     storageClass: local-path
+# ---
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: ts-auth-key
+# type: Opaque
+# data:
+#   key: "your-key"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tailscale
+rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources: ["secrets"]
+    # Create can not be restricted to a resource name.
+    verbs: ["create"]
+  - apiGroups: [""] # "" indicates the core API group
+    resourceNames: ["ts-owntracks-state"]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tailscale
+subjects:
+  - kind: ServiceAccount
+    name: "tailscale-owntracks"
+roleRef:
+  kind: Role
+  name: tailscale
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: v1
-kind: Secret
+kind: ServiceAccount
 metadata:
-  name: ts-auth-key
-type: Opaque
+  name: tailscale-owntracks
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ts-owntracks-serve
 data:
-  key: "your-key"
+  serve.json: |
+    {
+      "TCP": {
+        "443": {
+          "HTTPS": true
+        }
+      },
+      "Web": {
+        "owntracks.hippo-cod.ts.net:443": {
+          "Handlers": {
+            "/": {
+              "Proxy": "http://localhost:8080/"
+            }
+          }
+        }
+      }
+    }
