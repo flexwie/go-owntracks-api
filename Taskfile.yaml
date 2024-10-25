@@ -1,0 +1,16 @@
+version: 3
+
+tasks:
+  run:
+    cmds:
+      - go run main.go {{.CLI_ARGS}}
+  build:
+    cmds:
+      - go build -o bin/owntracks-api
+      - ko build main.go
+  deploy:
+    cmds:
+      - ko apply -f deployment.yaml
+  sql:
+    cmds:
+      - docker run --name sql --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=psqlpwd postgis/postgis
