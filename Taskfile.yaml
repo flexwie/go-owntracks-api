@@ -10,7 +10,7 @@ tasks:
       - ko build main.go
   deploy:
     cmds:
-      - ko apply -f deployment.yaml
-  sql:
+      - ko apply -f deploy/deployment.yaml
+  backup:
     cmds:
-      - docker run --name sql --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=psqlpwd postgis/postgis
+      - kubectl apply -f deploy/backup.yaml
