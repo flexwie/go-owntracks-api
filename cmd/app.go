@@ -52,6 +52,8 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().String("addr", ":8080", "address")
 	viper.BindPFlag("addr", rootCmd.PersistentFlags().Lookup("addr"))
+	rootCmd.PersistentFlags().String("user-header", "Tailscale-User-Login", "header for sso")
+	viper.BindPFlag("user-header", rootCmd.PersistentFlags().Lookup("user-header"))
 
 	rootCmd.PersistentFlags().String("db-host", "localhost", "hostname of db")
 	viper.BindPFlag("db-host", rootCmd.PersistentFlags().Lookup("db-host"))

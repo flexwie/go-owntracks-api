@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/spf13/viper"
 )
 
 var locationPosted = promauto.NewCounter(prometheus.CounterOpts{
@@ -47,14 +48,24 @@ func (c *CreatePointHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// who, err := c.TsClient.WhoIs(r.Context(), r.RemoteAddr)
-	// if err != nil {
-	// 	returnError(err, w)
-	// 	return
-	// }
+	// TODO: create auth middleware for this
+	// fetch user from header
+	userHeaderName := viper.GetString("user-header")
+	if userHeaderName == "" {
+		c.Log.Error("no user header provided in config")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	username := r.Header.Get(userHeaderName)
+	if username == "" {
+		c.Log.Error("no user header provided in request")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	//location := locationDto.ToModel(who.Node.Name)
-	location := locationDto.ToModel("felix")
+	location := locationDto.ToModel(username)
 
 	tx := c.Db.MustBegin()
 	tx.NamedExec("INSERT INTO location(username, lat, lng, alt) VALUES (:username, :lat, :lng, :alt)", location)
