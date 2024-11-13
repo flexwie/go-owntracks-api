@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS location (
 	lat REAL,
 	lng REAL,
 	alt REAL
-)`
+);
+
+ALTER TABLE location ADD IF NOT EXISTS vel REAL NOT NULL DEFAULT 0;
+`
 
 func newDb(lc fx.Lifecycle) (*sqlx.DB, error) {
 	host, err := checkOrError("db-host")

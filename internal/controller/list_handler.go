@@ -2,7 +2,9 @@ package controller
 
 import (
 	"html/template"
+	"iter"
 	"net/http"
+	"slices"
 
 	_ "embed"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/flexwie/owntracks-api/internal/db"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/viper"
+	"github.com/twpayne/go-polyline"
 )
 
 //go:embed list.html.tmpl
@@ -46,11 +49,19 @@ func (c *GetListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	locations := []db.Location{}
-	err := c.Db.Select(&locations, "select * FROM location WHERE username=$1 ORDER BY created DESC LIMIT 100", username)
+	err := c.Db.Select(&locations, "select * FROM location WHERE username=$1 AND created >= now()::date + interval '1h' ORDER BY created DESC", username)
 	if err != nil {
 		returnError(err, w)
 		return
 	}
+
+	coords := [][]float64{}
+	for n := range Map(slices.Values(locations), func(loc db.Location) []float64 {
+		return []float64{float64(loc.Lat), float64(loc.Lng)}
+	}) {
+		coords = append(coords, n)
+	}
+	line := string(polyline.EncodeCoords(coords))
 
 	tmpl, err := template.New("list").Parse(t)
 	if err != nil {
@@ -59,10 +70,12 @@ func (c *GetListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type data struct {
+		Line      string
 		Locations []db.Location
 	}
 
 	err = tmpl.Execute(w, &data{
+		Line:      line,
 		Locations: locations,
 	})
 	if err != nil {
@@ -74,4 +87,14 @@ func (c *GetListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (*GetListHandler) Pattern() string {
 	return "/list"
+}
+
+func Map[T, U any](seq iter.Seq[T], f func(T) U) iter.Seq[U] {
+	return func(yield func(U) bool) {
+		for a := range seq {
+			if !yield(f(a)) {
+				return
+			}
+		}
+	}
 }

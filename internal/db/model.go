@@ -9,4 +9,5 @@ type Location struct {
 	Lat      float32   `db:"lat"`
 	Lng      float32   `db:"lng"`
 	Alt      float32   `db:"alt"`
+	Vel      float32   `db:"vel"`
 }
