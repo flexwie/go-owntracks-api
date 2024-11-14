@@ -68,7 +68,7 @@ func (c *CreatePointHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	location := locationDto.ToModel(username)
 
 	tx := c.Db.MustBegin()
-	tx.NamedExec("INSERT INTO location(username, lat, lng, alt, created) VALUES (:username, :lat, :lng, :alt, :created)", location)
+	tx.NamedExec("INSERT INTO location(username, lat, lng, alt, vel, created) VALUES (:username, :lat, :lng, :alt, :vel, :created)", location)
 	tx.Commit()
 
 	locationPosted.Inc()
