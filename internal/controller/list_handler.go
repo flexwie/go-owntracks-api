@@ -5,6 +5,7 @@ import (
 	"iter"
 	"net/http"
 	"slices"
+	"time"
 
 	_ "embed"
 
@@ -48,8 +49,22 @@ func (c *GetListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get date from query
+	date := time.Now()
+	var err error
+	dateParam := r.URL.Query().Get("date")
+	if dateParam != "" {
+		date, err = time.Parse(time.DateOnly, dateParam)
+		if err != nil {
+			returnError(err, w)
+			return
+		}
+	}
+
+	c.Log.Info("fetching locations", "date", date.Format(time.DateOnly))
+
 	locations := []db.Location{}
-	err := c.Db.Select(&locations, "select * FROM location WHERE username=$1 AND created >= now()::date + interval '1h' ORDER BY created DESC", username)
+	err = c.Db.Select(&locations, "select * FROM location WHERE username=$1 AND created::date >= to_date($2, 'YYYY-mm-dd') ORDER BY created DESC", username, date.Format(time.DateOnly))
 	if err != nil {
 		returnError(err, w)
 		return
