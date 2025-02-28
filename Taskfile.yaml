@@ -11,6 +11,3 @@ tasks:
   deploy:
     cmds:
       - ko apply -f deploy/deployment.yaml
-  backup:
-    cmds:
-      - kubectl apply -f deploy/backup.yaml
